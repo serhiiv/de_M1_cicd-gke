@@ -19,8 +19,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     python -m pip install -r requirements.txt
 
 # Copy the source code into the container.
-COPY flasky/* .
+COPY flasky/ .
 
-# Run the application.
-ENTRYPOINT ["python", "-m"]
-CMD ["uvicorn", "app:app", "--host=0.0.0.0", "--port=8000"]
+EXPOSE 8000
+CMD ["python", "app.py"]
