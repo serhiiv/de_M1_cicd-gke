@@ -7,7 +7,7 @@ ENV PYTHONDONTWRITEBYTECODE=1
 # the application crashes without emitting any logs due to buffering.
 ENV PYTHONUNBUFFERED=1
 
-WORKDIR /app
+WORKDIR /flasky
 
 # Download dependencies as a separate step to take advantage of Docker's caching.
 # Leverage a cache mount to /root/.cache/pip to speed up subsequent builds.
@@ -19,8 +19,8 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     python -m pip install -r requirements.txt
 
 # Copy the source code into the container.
-COPY app/* .
+COPY flasky/* .
 
 # Run the application.
 ENTRYPOINT ["python", "-m"]
-CMD ["uvicorn", "slave:app", "--host=0.0.0.0", "--port=8000"]
+CMD ["uvicorn", "app:app", "--host=0.0.0.0", "--port=8000"]
