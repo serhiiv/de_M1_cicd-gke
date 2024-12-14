@@ -8,7 +8,7 @@ app = Flask(__name__)
 @app.route("/")
 def hello_world():
     message = ["Hello, DevDataOps!"]
-    message.append('version: 0.01')
+    message.append('version: 0.02')
     message.append(socket.gethostname())
     message.append(str(datetime.now()))
     return '\n'.join(message)
