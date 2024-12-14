@@ -138,62 +138,77 @@ jobs:
         run: |
           gcloud container clusters get-credentials ${{ vars.GKE_CLUSTER }} --region ${{ vars.GKE_REGION }}
 
-  #     - 
-  #       name: Create namespace & set in Kustomize
-  #       run: |
-  #         namespacePresentBlue=`kubectl get ns | grep cicd-gke-blue | wc -l`
-  #         namespacePresentGreen=`kubectl get ns | grep cicd-gke-green | wc -l`
-  #         if [ $namespacePresentBlue -eq 0 ]
-  #         then
-  #             kubectl create ns cicd-gke-blue
-  #             cd k8s
-  #             kustomize edit set namespace cicd-gke-blue
-  #             kustomize edit set label app:cicd-gke-blue
-  #             echo "NEW_NAMESPACE=cicd-gke-blue" >> $GITHUB_ENV
-  #             echo "OLD_NAMESPACE=cicd-gke-green" >> $GITHUB_ENV
-  #         elif [ $namespacePresentGreen -eq 0 ] 
-  #         then
-  #             kubectl create ns cicd-gke-green
-  #             cd k8s
-  #             kustomize edit set namespace cicd-gke-green
-  #             kustomize edit set label app:cicd-gke-green
-  #             echo "NEW_NAMESPACE=cicd-gke-green" >> $GITHUB_ENV
-  #             echo "OLD_NAMESPACE=cicd-gke-blue" >> $GITHUB_ENV
-  #         else
-  #             echo "Both Blue and Green namespaces are present! Exiting"
-  #             exit 1
-  #         fi
+      - 
+        name: Create new namespace
+        run: |
+          kubectl apply -f k8s/namespace.yaml
 
-  #     - 
-  #       name: Update Kubernetes resources
-  #       run: |
-  #         cd k8s
-  #         kustomize edit set image cicd-gke=${{ vars.DOCKERHUB_USERNAME }}/cicd-gke:${{ github.sha }}
-  #         cat kustomization.yaml
+      - 
+        name: Select color for release
+        run: |
+          if [ `kubectl get deployments -n cicd-gke | grep blue | wc -l` -eq 0 ]
+          then
+            echo "NEW_COLOR=blue" >> $GITHUB_ENV
+            echo "OLD_COLOR=green" >> $GITHUB_ENV
 
-  #     - 
-  #       name: Deploy updated Kubernetes resources
-  #       run: |
-  #         kubectl apply -k k8s/
+          elif [ `kubectl get deployments -n cicd-gke | grep green | wc -l` -eq 0 ] 
+          then
+            echo "NEW_COLOR=green" >> $GITHUB_ENV
+            echo "OLD_COLOR=blue" >> $GITHUB_ENV
 
-  #     - 
-  #       name: REMOVE OLD DEPLOYMENT!!
-  #       run: |
-  #         namespacePresentOld=`kubectl get ns | grep ${{ env.OLD_NAMESPACE }} | wc -l`
-  #         if [ $namespacePresentOld -eq 1 ]
-  #         then
-  #           kubectl delete ns ${{ env.OLD_NAMESPACE }} --wait=true
-  #         fi
+          else
+              echo "Both Blue and Green namespaces are present! Exiting"
+              exit 1
+          fi
 
-  #     - 
-  #       name: Commit files
-  #       run: |
-  #         git config --local user.email "action@github.com"
-  #         git config --local user.name "GitHub Action"
-  #         git commit -am "Bump docker tag!"
 
-  #     - 
-  #       name: Push changes
-  #       uses: ad-m/github-push-action@master
-  #       with:
-  #         github_token: ${{ secrets.GITHUB_TOKEN }}
+      - 
+        name: Create & set new Kustomize
+        run: |
+          cd k8s
+          rm kustomization.yaml
+          kustomize create --resources deployment.yaml --namesuffix "-${{ env.NEW_COLOR }}"
+          # kustomize create --resources deployment.yaml --namesuffix -green
+
+          kustomize edit set image cicd-gke=${{ vars.DOCKERHUB_USERNAME }}/cicd-gke:${{ github.sha }}
+          # kustomize edit set image cicd-gke=serhii714/cicd-gke:latest
+
+          echo -e "labels:\n  - pairs:\n      app: cicd-gke-${{ env.NEW_COLOR }}\n    includeSelectors: true" >> kustomization.yaml
+          # echo -e "labels:\n  - pairs:\n      app: cicd-gke-green\n    includeSelectors: true" >> kustomization.yaml
+
+          cat kustomization.yaml
+
+      - 
+        name: Deploy updated Kubernetes pods
+        run: |
+          kubectl apply -k k8s/
+          kubectl rollout status -k k8s/ -w
+
+      - 
+        name: Deploy updated Kubernetes service
+        run: |
+          kubectl apply -f k8s/service.yaml
+          kubectl patch service cicd-gke-loadbalancer -p '{"spec":{"selector":{"app":"cicd-gke-${{ env.NEW_COLOR }}"}}}' -n cicd-gke
+          # kubectl patch service cicd-gke-loadbalancer -p '{"spec":{"selector":{"app":"cicd-gke-green"}}}' -n cicd-gke
+
+      - 
+        name: REMOVE OLD DEPLOYMENT!!
+        run: |
+          if [ `kubectl get deployments -n cicd-gke | grep ${{ env.OLD_COLOR }} | wc -l` -eq 1 ]
+          then
+            kubectl delete deployments cicd-gke-${{ env.OLD_COLOR }} -n cicd-gke --wait=true
+            # kubectl delete deployments cicd-gke-blue -n cicd-gke --wait=true
+          fi
+
+      - 
+        name: Commit files
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git commit -am "Bump docker tag!"
+
+      - 
+        name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}

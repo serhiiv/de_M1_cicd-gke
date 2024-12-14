@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cicd-gke
+  namespace: cicd-gke
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: cicd-gke
+  template:
+    metadata:
+      labels:
+        app: cicd-gke
+    spec:
+      containers:
+        - name: cicd-gke
+          image: "serhii714/cicd-gke:latest"
+          ports:
+          - name: flask
+            containerPort: 8000
