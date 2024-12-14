@@ -143,6 +143,7 @@ jobs:
         run: |
           echo "GKE_NAMESPACE=cicd-gke" >> $GITHUB_ENV
           if [ `kubectl get namespaces | grep ${{ env.GKE_NAMESPACE }} | wc -l` -eq 0 ]
+          then
             kubectl create namespace ${{ env.GKE_NAMESPACE }}
           fi
 
