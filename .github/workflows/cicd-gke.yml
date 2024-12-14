@@ -141,21 +141,20 @@ jobs:
       - 
         name: Create new namespace
         run: |
-          echo "GKE_NAMESPACE=cicd-gke" >> $GITHUB_ENV
-          if [ `kubectl get namespaces | grep ${{ env.GKE_NAMESPACE }} | wc -l` -eq 0 ]
+          if [ `kubectl get namespaces | grep cicd-gke | wc -l` -eq 0 ]
           then
-            kubectl create namespace ${{ env.GKE_NAMESPACE }}
+            kubectl create namespace cicd-gke
           fi
 
       - 
         name: Select color for release
         run: |
-          if [ `kubectl get deployments -n ${{ env.GKE_NAMESPACE }} | grep blue | wc -l` -eq 0 ]
+          if [ `kubectl get deployments -n cicd-gke | grep blue | wc -l` -eq 0 ]
           then
             echo "NEW_COLOR=blue" >> $GITHUB_ENV
             echo "OLD_COLOR=green" >> $GITHUB_ENV
 
-          elif [ `kubectl get deployments -n ${{ env.GKE_NAMESPACE }} | grep green | wc -l` -eq 0 ] 
+          elif [ `kubectl get deployments -n cicd-gke | grep green | wc -l` -eq 0 ] 
           then
             echo "NEW_COLOR=green" >> $GITHUB_ENV
             echo "OLD_COLOR=blue" >> $GITHUB_ENV
@@ -173,7 +172,7 @@ jobs:
           rm kustomization.yaml
           kustomize create --resources deployment.yaml --namesuffix "-${{ env.NEW_COLOR }}"
           kustomize edit set image cicd-gke=${{ vars.DOCKERHUB_USERNAME }}/cicd-gke:${{ github.sha }}
-          echo -e "labels:\n  - pairs:\n      app: ${{ env.GKE_NAMESPACE }}-${{ env.NEW_COLOR }}\n    includeSelectors: true" >> kustomization.yaml
+          echo -e "labels:\n  - pairs:\n      app: cicd-gke-${{ env.NEW_COLOR }}\n    includeSelectors: true" >> kustomization.yaml
 
           cat kustomization.yaml
 
@@ -187,14 +186,14 @@ jobs:
         name: Deploy updated Kubernetes service
         run: |
           kubectl apply -f k8s/service.yaml
-          kubectl patch service cicd-gke-loadbalancer -p '{"spec":{"selector":{"app":"${{ env.GKE_NAMESPACE }}-${{ env.NEW_COLOR }}"}}}' -n ${{ env.GKE_NAMESPACE }}
+          kubectl patch service cicd-gke-loadbalancer -p '{"spec":{"selector":{"app":"cicd-gke-${{ env.NEW_COLOR }}"}}}' -n cicd-gke
 
       - 
         name: REMOVE OLD DEPLOYMENT!!
         run: |
-          if [ `kubectl get deployments -n ${{ env.GKE_NAMESPACE }} | grep ${{ env.OLD_COLOR }} | wc -l` -eq 1 ]
+          if [ `kubectl get deployments -n cicd-gke | grep ${{ env.OLD_COLOR }} | wc -l` -eq 1 ]
           then
-            kubectl delete deployments ${{ env.GKE_NAMESPACE }}-${{ env.OLD_COLOR }} -n ${{ env.GKE_NAMESPACE }} --wait=true
+            kubectl delete deployments cicd-gke-${{ env.OLD_COLOR }} -n cicd-gke --wait=true
           fi
 
       - 
