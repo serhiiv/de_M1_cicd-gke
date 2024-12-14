@@ -141,17 +141,20 @@ jobs:
       - 
         name: Create new namespace
         run: |
-          kubectl apply -f k8s/namespace.yaml
+          echo "GKE_NAMESPACE=cicd-gke" >> $GITHUB_ENV
+          if [ `kubectl get namespaces | grep ${{ env.GKE_NAMESPACE }} | wc -l` -eq 0 ]
+            kubectl create namespace ${{ env.GKE_NAMESPACE }}
+          fi
 
       - 
         name: Select color for release
         run: |
-          if [ `kubectl get deployments -n cicd-gke | grep blue | wc -l` -eq 0 ]
+          if [ `kubectl get deployments -n ${{ env.GKE_NAMESPACE }} | grep blue | wc -l` -eq 0 ]
           then
             echo "NEW_COLOR=blue" >> $GITHUB_ENV
             echo "OLD_COLOR=green" >> $GITHUB_ENV
 
-          elif [ `kubectl get deployments -n cicd-gke | grep green | wc -l` -eq 0 ] 
+          elif [ `kubectl get deployments -n ${{ env.GKE_NAMESPACE }} | grep green | wc -l` -eq 0 ] 
           then
             echo "NEW_COLOR=green" >> $GITHUB_ENV
             echo "OLD_COLOR=blue" >> $GITHUB_ENV
@@ -168,13 +171,8 @@ jobs:
           cd k8s
           rm kustomization.yaml
           kustomize create --resources deployment.yaml --namesuffix "-${{ env.NEW_COLOR }}"
-          # kustomize create --resources deployment.yaml --namesuffix -green
-
           kustomize edit set image cicd-gke=${{ vars.DOCKERHUB_USERNAME }}/cicd-gke:${{ github.sha }}
-          # kustomize edit set image cicd-gke=serhii714/cicd-gke:latest
-
-          echo -e "labels:\n  - pairs:\n      app: cicd-gke-${{ env.NEW_COLOR }}\n    includeSelectors: true" >> kustomization.yaml
-          # echo -e "labels:\n  - pairs:\n      app: cicd-gke-green\n    includeSelectors: true" >> kustomization.yaml
+          echo -e "labels:\n  - pairs:\n      app: ${{ env.GKE_NAMESPACE }}-${{ env.NEW_COLOR }}\n    includeSelectors: true" >> kustomization.yaml
 
           cat kustomization.yaml
 
@@ -188,16 +186,14 @@ jobs:
         name: Deploy updated Kubernetes service
         run: |
           kubectl apply -f k8s/service.yaml
-          kubectl patch service cicd-gke-loadbalancer -p '{"spec":{"selector":{"app":"cicd-gke-${{ env.NEW_COLOR }}"}}}' -n cicd-gke
-          # kubectl patch service cicd-gke-loadbalancer -p '{"spec":{"selector":{"app":"cicd-gke-green"}}}' -n cicd-gke
+          kubectl patch service cicd-gke-loadbalancer -p '{"spec":{"selector":{"app":"${{ env.GKE_NAMESPACE }}-${{ env.NEW_COLOR }}"}}}' -n ${{ env.GKE_NAMESPACE }}
 
       - 
         name: REMOVE OLD DEPLOYMENT!!
         run: |
-          if [ `kubectl get deployments -n cicd-gke | grep ${{ env.OLD_COLOR }} | wc -l` -eq 1 ]
+          if [ `kubectl get deployments -n ${{ env.GKE_NAMESPACE }} | grep ${{ env.OLD_COLOR }} | wc -l` -eq 1 ]
           then
-            kubectl delete deployments cicd-gke-${{ env.OLD_COLOR }} -n cicd-gke --wait=true
-            # kubectl delete deployments cicd-gke-blue -n cicd-gke --wait=true
+            kubectl delete deployments ${{ env.GKE_NAMESPACE }}-${{ env.OLD_COLOR }} -n ${{ env.GKE_NAMESPACE }} --wait=true
           fi
 
       - 
