@@ -6,7 +6,7 @@ nameSuffix: -blue
 images:
 - name: cicd-gke
   newName: serhii714/cicd-gke
-  newTag: f8f2f42f40f8f97aeaee62862530a51627d53b11
+  newTag: 43aa1bcf88b510e80523193446755a823a918603
 labels:
   - pairs:
       app: cicd-gke-blue
