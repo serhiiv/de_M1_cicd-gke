@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: cicd-gke
-          image: "serhii714/cicd-gke:latest"
+          image: cicd-gke
           ports:
           - name: flask
             containerPort: 8000
