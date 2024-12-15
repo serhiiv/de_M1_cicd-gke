@@ -6,4 +6,4 @@ resources:
 images:
 - name: cicd-gke
   newName: serhii714/cicd-gke
-  newTag: c60ff1b5b58b92dd8196992d35d2f4be63aa0efb
+  newTag: 99dd79c85ca82f04a33fbf36a80f446cfcb4b8ee
