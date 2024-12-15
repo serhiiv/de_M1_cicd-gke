@@ -2,12 +2,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
 - deployment.yaml
-nameSuffix: -blue
 images:
 - name: cicd-gke
   newName: serhii714/cicd-gke
-  newTag: b7fb9f853d618ff7e3bb1b0c940857382e88312f
-labels:
-  - pairs:
-      app: cicd-gke-blue
-    includeSelectors: true
+  newTag: 14957b7b843ed6935eb94521fc4715efa196de8f
