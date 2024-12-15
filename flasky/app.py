@@ -9,7 +9,7 @@ app = Flask(__name__)
 def hello_world():
     message = ["Hello, DevDataOps!"]
     message.append('---')
-    message.append('version: 0.02')
+    message.append('version: 0.03')
     message.append('hostname: ' + str(socket.gethostname()))
     message.append('datetime: ' + str(datetime.now()))
     message.append('')
